@@ -8,7 +8,7 @@ export AbstractReplicas, step!, step_slot!, try_exchange,
     equilibrate!, monitor_equilibration!,
     replica_exchanges!, compute_exchange_rates, compute_acceptance_rates,
     check_edge_groups,
-    getstate, getenergy, getenergies, getslotenergies,
+    getstate, getenergy, getenergies,
     getbeta, getbetas, getwalkerid, getwalkerids, swapwalkers!,
     SamplingParams, sample_replicas!
 
@@ -18,7 +18,7 @@ export Edge, EdgeGroupsOf, ExchangeRates, AcceptanceRates
 abstract type AbstractReplicas end
 
 step!(reps::AbstractReplicas) = error("step!(reps) is not implemented.")
-step_slot!(reps::AbstractReplicas, slot::Int) = error("step!(reps) is not implemented.")
+step_slot!(reps::AbstractReplicas, slot::Int) = error("step_slot!(reps, slot) is not implemented.")
 getenergy(::AbstractReplicas, slot::Int) = error("getenergy(reps, slot) is not implemented.")
 getstate(::AbstractReplicas, slot::Int) = error("getstate(reps, slot) is not implemented.")
 getbeta(::AbstractReplicas, slot::Int) = error("getbeta(reps, slot) is not implemented.")
@@ -308,10 +308,25 @@ function equilibrate!(reps::AbstractReplicas, eq_params::EquilibrationParams; ex
     ex_params.swap_every > 0 || error("swap_every must be positive.")
     check_edge_groups(ex_params.edge_groups, K)
 
-    stats = EquilibrationStats(ex_params, K)
+    eq_params.n_sweeps % ex_params.swap_every == 0 || error("n_sweeps must be divisible by swap_every.")
 
-    for sweep in 1:eq_params.n_sweeps
-        replica_sweep!(reps, sweep, ex_params, stats.exchange, stats.acceptance, stats.walker; rng=rng)
+    stats = EquilibrationStats(ex_params, K)
+    n_blocks = eq_params.n_sweeps ÷ ex_params.swap_every
+
+    for block in 1:n_blocks
+        accepted = steps!(reps, ex_params.swap_every)
+        update_acceptance!(stats.acceptance, accepted, ex_params.swap_every)
+
+        g = mod1(block, length(ex_params.edge_groups))
+        replica_exchanges!(
+            reps,
+            ex_params.edge_groups[g],
+            stats.exchange.n_attempts[g],
+            stats.exchange.n_accepts[g];
+            rng=rng,
+        )
+
+        update_walker_status!(stats.walker, getwalkerids(reps))
     end
 
     return (exchange=stats.exchange, acceptance=stats.acceptance)
