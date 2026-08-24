@@ -1,4 +1,4 @@
-module ReplicaExchange
+module ParallelTemperingMonteCarlo
 
 using Random, LinearAlgebra
 
@@ -52,18 +52,18 @@ function getenergies!(out, reps::AbstractReplicas)
 end
 
 ## Type alias
-"ReplicaExchagne.Edge = Tuple{Int, Int}"
+"ParallelTemperingMonteCarlo.Edge = Tuple{Int, Int}"
 const Edge = Tuple{Int, Int}
 
 """
-ReplicaExchange.EdgeGroupsOf{T} = Vector{Vector{T}}. In ReplicaExchange module, the size of outer vector is meant to be the number of edge groups, size of the inner vector is meant to be the number of edges
+ParallelTemperingMonteCarlo.EdgeGroupsOf{T} = Vector{Vector{T}}. In ParallelTemperingMonteCarlo module, the size of outer vector is meant to be the number of edge groups, size of the inner vector is meant to be the number of edges
 """
 const EdgeGroupsOf{T} = Vector{Vector{T}}
 
-"CONST: ReplicaExchange.ExchangeRates = EdgeGroupsOf{Float64}"
+"CONST: ParallelTemperingMonteCarlo.ExchangeRates = EdgeGroupsOf{Float64}"
 const ExchangeRates   = EdgeGroupsOf{Float64}
 
-"CONST: ReplicaExchange.AcceptanceRates = Vector{Float64}"
+"CONST: ParallelTemperingMonteCarlo.AcceptanceRates = Vector{Float64}"
 const AcceptanceRates = Vector{Float64}
 
 
