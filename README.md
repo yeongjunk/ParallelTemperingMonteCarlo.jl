@@ -1,5 +1,8 @@
 # ParallelTemperingMonteCarlo.jl
 
+[![CI](https://github.com/yeongjunk/ParallelTemperingMonteCarlo.jl/actions/workflows/CI.yml/badge.svg?branch=master)](https://github.com/yeongjunk/ParallelTemperingMonteCarlo.jl/actions/workflows/CI.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
 A lightweight, algorithm-independent implementation of parallel tempering
 (replica-exchange Monte Carlo) for Julia.
 
@@ -76,3 +79,7 @@ Run the test suite with:
 using Pkg
 Pkg.test()
 ```
+
+## License
+
+ParallelTemperingMonteCarlo.jl is released under the [MIT License](LICENSE).
