@@ -1,4 +1,4 @@
-module ParallelTemperingMonteCarlo
+module ParallelTemperingSamplers
 
 using Random, LinearAlgebra
 
@@ -52,18 +52,18 @@ function getenergies!(out, reps::AbstractReplicas)
 end
 
 ## Type alias
-"ParallelTemperingMonteCarlo.Edge = Tuple{Int, Int}"
+"ParallelTemperingSamplers.Edge = Tuple{Int, Int}"
 const Edge = Tuple{Int, Int}
 
 """
-ParallelTemperingMonteCarlo.EdgeGroupsOf{T} = Vector{Vector{T}}. In ParallelTemperingMonteCarlo module, the size of outer vector is meant to be the number of edge groups, size of the inner vector is meant to be the number of edges
+ParallelTemperingSamplers.EdgeGroupsOf{T} = Vector{Vector{T}}. The outer vector contains edge groups, and each inner vector contains the edges attempted together.
 """
 const EdgeGroupsOf{T} = Vector{Vector{T}}
 
-"CONST: ParallelTemperingMonteCarlo.ExchangeRates = EdgeGroupsOf{Float64}"
+"CONST: ParallelTemperingSamplers.ExchangeRates = EdgeGroupsOf{Float64}"
 const ExchangeRates   = EdgeGroupsOf{Float64}
 
-"CONST: ParallelTemperingMonteCarlo.AcceptanceRates = Vector{Float64}"
+"CONST: ParallelTemperingSamplers.AcceptanceRates = Vector{Float64}"
 const AcceptanceRates = Vector{Float64}
 
 
@@ -115,6 +115,13 @@ end
 
 ## Exchange parameters and status updates
 
+"""
+    ExchangeParams(edge_groups, swap_every)
+
+Configure replica exchanges. `edge_groups` is a vector of groups of slot pairs;
+one group is used per exchange round in cyclic order. `swap_every` is the number
+of local Monte Carlo sweeps between exchange rounds.
+"""
 struct ExchangeParams
     edge_groups::EdgeGroupsOf{Edge}
     swap_every::Int
@@ -279,6 +286,13 @@ end
 ## Equilibration
 
 
+"""
+    EquilibrationParams(n_sweeps, partition_every)
+
+Configure equilibration. `n_sweeps` is the total number of local Monte Carlo
+sweeps, and `partition_every` sets the interval used to record diagnostics in
+[`monitor_equilibration!`](@ref).
+"""
 struct EquilibrationParams
     n_sweeps::Int
     partition_every::Int
@@ -300,6 +314,13 @@ function replica_sweep!(reps::AbstractReplicas, n_steps::Int, acceptance_status:
     return nothing
 end
 
+"""
+    equilibrate!(reps, eq_params; ex_params, rng=Random.GLOBAL_RNG)
+
+Equilibrate `reps` using the local update supplied by its `AbstractReplicas`
+implementation and the exchange schedule in `ex_params`. Return aggregate
+exchange and local-acceptance statistics.
+"""
 function equilibrate!(reps::AbstractReplicas, eq_params::EquilibrationParams; ex_params::ExchangeParams, rng = Random.GLOBAL_RNG)
     K = length(reps)
 
@@ -332,6 +353,12 @@ function equilibrate!(reps::AbstractReplicas, eq_params::EquilibrationParams; ex
     return (exchange=stats.exchange, acceptance=stats.acceptance)
 end
 
+"""
+    monitor_equilibration!(reps, eq_params, ex_params; rng=Random.GLOBAL_RNG)
+
+Equilibrate `reps` while recording energies, exchange statistics, local
+acceptance statistics, and walker round-trip diagnostics at each partition.
+"""
 function monitor_equilibration!(reps::AbstractReplicas, eq_params::EquilibrationParams, ex_params::ExchangeParams; rng = Random.GLOBAL_RNG)
     K = length(reps)
 
@@ -391,6 +418,13 @@ end
 ## Sampling
 
 
+"""
+    SamplingParams(n_sweeps, sample_every, partition_every, beta_indices)
+
+Configure production sampling. States are saved every `sample_every` sweeps
+from the slots in `beta_indices`; exchange and acceptance statistics are
+collected every `partition_every` sweeps.
+"""
 struct SamplingParams
     n_sweeps::Int
     sample_every::Int
@@ -400,6 +434,13 @@ end
 
 SamplingParams(n_sweeps::Int, sample_every::Int, partition_every::Int, K::Int) = SamplingParams(n_sweeps, sample_every, partition_every, collect(1:K))
 
+"""
+    sample_replicas!(reps, sampling_params, exchange_params;
+                     rng=Random.GLOBAL_RNG, sample_eltype=ComplexF64)
+
+Run production parallel-tempering sampling and return saved states, their
+inverse temperatures, and partitioned exchange and acceptance histories.
+"""
 function sample_replicas!(reps::AbstractReplicas, sampling_params::SamplingParams, exchange_params::ExchangeParams; rng = Random.GLOBAL_RNG, sample_eltype = ComplexF64)
     K = length(reps)
 
@@ -409,7 +450,7 @@ function sample_replicas!(reps::AbstractReplicas, sampling_params::SamplingParam
     exchange_params.swap_every > 0 || error("swap_every must be positive.")
     check_edge_groups(exchange_params.edge_groups, K)
 
-    # Block 최적화를 위한 정합성 검사 (monitor 함수와 동일한 논리)
+    # Consistency checks required by block-wise execution
     sampling_params.n_sweeps % exchange_params.swap_every == 0 || error("n_sweeps must be divisible by swap_every.")
     sampling_params.partition_every % exchange_params.swap_every == 0 || error("partition_every must be divisible by swap_every.")
     sampling_params.sample_every % exchange_params.swap_every == 0 || error("sample_every must be divisible by swap_every for block optimization.")
@@ -440,7 +481,7 @@ function sample_replicas!(reps::AbstractReplicas, sampling_params::SamplingParam
     edge_groups = exchange_params.edge_groups
 
     for block in 1:n_blocks
-        # 1. Local updates (블록 단위 일괄 처리)
+        # 1. Local updates in one block
         accepted = steps!(reps, swap_every)
         update_acceptance!(acceptance_status, accepted, swap_every)
 
@@ -448,7 +489,7 @@ function sample_replicas!(reps::AbstractReplicas, sampling_params::SamplingParam
         g = mod1(block, length(edge_groups))
         replica_exchanges!(reps, edge_groups[g], exchange_status.n_attempts[g], exchange_status.n_accepts[g]; rng=rng)
 
-        # 현재까지 진행된 전체 sweep 수 계산
+        # Total number of completed sweeps
         sweep = block * swap_every
 
         # 3. Sampling
@@ -482,4 +523,3 @@ function sample_replicas!(reps::AbstractReplicas, sampling_params::SamplingParam
 end
 
 end # module
-

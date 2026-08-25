@@ -1,4 +1,4 @@
-name = "ParallelTemperingMonteCarlo"
+name = "ParallelTemperingSamplers"
 uuid = "52bd480a-a86d-4047-9660-0fcaefa78374"
 authors = ["yjkim <yeongjun.kim.04@gmail.com>"]
 version = "0.1.0"

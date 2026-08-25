@@ -1,6 +1,6 @@
-# ParallelTemperingMonteCarlo.jl
+# ParallelTemperingSamplers.jl
 
-[![CI](https://github.com/yeongjunk/ParallelTemperingMonteCarlo.jl/actions/workflows/CI.yml/badge.svg?branch=master)](https://github.com/yeongjunk/ParallelTemperingMonteCarlo.jl/actions/workflows/CI.yml)
+[![CI](https://github.com/yeongjunk/ParallelTemperingSamplers.jl/actions/workflows/CI.yml/badge.svg?branch=master)](https://github.com/yeongjunk/ParallelTemperingSamplers.jl/actions/workflows/CI.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 A lightweight, algorithm-independent implementation of parallel tempering
@@ -18,7 +18,7 @@ directly from GitHub:
 
 ```julia
 using Pkg
-Pkg.add(url="https://github.com/yeongjunk/ParallelTemperingMonteCarlo.jl")
+Pkg.add(url="https://github.com/yeongjunk/ParallelTemperingSamplers.jl")
 ```
 
 ## Interface
@@ -55,6 +55,41 @@ Base.length(reps::AbstractReplicas) =
 Temperature parameters belong to fixed slots, while states belong to walkers.
 Replica exchange is implemented by changing the mapping from slots to walkers.
 
+## Parameters and main functions
+
+First define the exchange schedule and equilibration parameters:
+
+```julia
+edge_groups = [
+    [(1, 2), (3, 4)],
+    [(2, 3)],
+]
+
+exchange_params = ExchangeParams(edge_groups, 10)
+equilibration_params = EquilibrationParams(100_000, 10_000)
+```
+
+`ExchangeParams(edge_groups, swap_every)` specifies which pairs of temperature
+slots may exchange and how often exchanges are attempted. Each edge group is
+used in cyclic order. Edges within a group must not share a slot.
+
+`EquilibrationParams(n_sweeps, partition_every)` specifies the total number of
+equilibration sweeps and the interval used to collect diagnostic histories.
+
+The main driver functions are:
+
+- `equilibrate!(reps, equilibration_params; ex_params=exchange_params)` runs
+  equilibration and returns aggregate exchange and local-acceptance statistics.
+- `monitor_equilibration!(reps, equilibration_params, exchange_params)` runs
+  equilibration while recording energies, acceptance statistics, and walker
+  diagnostics for each partition.
+- `sample_replicas!(reps, sampling_params, exchange_params)` performs production
+  sampling. Construct `sampling_params` with `SamplingParams(n_sweeps,
+  sample_every, partition_every, beta_indices)`.
+
+The sweep and partition intervals must be divisible by `swap_every`. For
+sampling, `sample_every` must also be divisible by `swap_every`.
+
 ## Example
 
 A self-contained [Gaussian example](examples/gaussian.jl) implements a minimal
@@ -82,4 +117,4 @@ Pkg.test()
 
 ## License
 
-ParallelTemperingMonteCarlo.jl is released under the [MIT License](LICENSE).
+ParallelTemperingSamplers.jl is released under the [MIT License](LICENSE).
