@@ -1,8 +1,8 @@
 using Random
 using Statistics
-using ParallelTemperingMonteCarlo
+using ParallelTemperingSamplers
 
-import ParallelTemperingMonteCarlo:
+import ParallelTemperingSamplers:
     AbstractReplicas,
     step!,
     step_slot!,
