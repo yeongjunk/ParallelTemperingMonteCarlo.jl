@@ -13,12 +13,11 @@ Monte Carlo (HMC).
 
 ## Installation
 
-Until the package is registered in Julia's General registry, install it
-directly from GitHub:
+You can install it through the following command in julia REPL:
 
 ```julia
 using Pkg
-Pkg.add(url="https://github.com/yeongjunk/ParallelTemperingSamplers.jl")
+Pkg.add("ParallelTemperingSamplers")
 ```
 
 ## Interface
